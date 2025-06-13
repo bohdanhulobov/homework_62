@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body class="<%= theme || 'light' %>">
+    <div class="container">
+      <nav class="nav">
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/users">Users</a></li>
+          <li><a href="/articles">Articles</a></li>
+          <% if (user) { %>
+          <li><a href="/logout">Logout (<%= user.name %>)</a></li>
+          <% } else { %>
+          <li><a href="/login">Login</a></li>
+          <li><a href="/register">Register</a></li>
+          <% } %>
+        </ul>
+      </nav>
+
+      <main>
+        <h1>Welcome to <%= title %></h1>
+        <p>
+          This is a Node.js Express server with EJS templating, JWT
+          authentication, and cookie management.
+        </p>
+
+        <div class="theme-selector">
+          <h3>Choose Theme:</h3>
+          <form action="/set-theme" method="POST">
+            <label>
+              <input type="radio" name="theme" value="light" <%= theme ===
+              'light' ? 'checked' : '' %> onchange="this.form.submit()"> Light
+            </label>
+            <label>
+              <input type="radio" name="theme" value="dark" <%= theme === 'dark'
+              ? 'checked' : '' %> onchange="this.form.submit()"> Dark
+            </label>
+          </form>
+        </div>
+
+        <% if (user) { %>
+        <div class="user-info">
+          <h3>Welcome, <%= user.name %>!</h3>
+          <p>Email: <%= user.email %></p>
+        </div>
+        <% } %>
+      </main>
+    </div>
+  </body>
+</html>
