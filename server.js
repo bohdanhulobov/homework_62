@@ -2,58 +2,88 @@ const express = require("express");
 const path = require("path");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
-const jwt = require("jsonwebtoken");
+const session = require("express-session");
+const passport = require("passport");
+const LocalStrategy = require("passport-local").Strategy;
 
 const users = require("./data/users");
 const articles = require("./data/articles");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = "your-secret-key-change-in-production";
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Session configuration
+app.use(session({
+  secret: "your-session-secret-change-in-production",
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === "production",
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
+// Passport configuration
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Passport Local Strategy
+passport.use(new LocalStrategy({
+  usernameField: 'email',
+  passwordField: 'password'
+}, (email, password, done) => {
+  const user = users.find(u => u.email === email && u.password === password);
+  
+  if (!user) {
+    return done(null, false, { message: 'Invalid credentials' });
+  }
+  
+  return done(null, user);
+}));
+
+// Serialize user for session
+passport.serializeUser((user, done) => {
+  done(null, user.id);
+});
+
+// Deserialize user from session
+passport.deserializeUser((id, done) => {
+  const user = users.find(u => u.id === id);
+  done(null, user);
+});
+
+// Set EJS as template engine
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
 
+// Static files middleware
 app.use(express.static(path.join(__dirname, "public")));
 
-const authenticateToken = (req, res, next) => {
-  const token = req.cookies.token;
-
-  if (!token) {
-    req.user = null;
-    return next();
-  }
-
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-      req.user = null;
-    } else {
-      req.user = decoded;
-    }
-    next();
-  });
-};
-
+// Middleware to get theme from cookies
 const getTheme = (req, res, next) => {
   req.theme = req.cookies.theme || "light";
   next();
 };
 
+// Middleware to protect routes (require authentication)
 const requireAuth = (req, res, next) => {
-  if (!req.user) {
+  if (!req.isAuthenticated()) {
     return res.redirect("/login?redirect=true");
   }
   next();
 };
 
-app.use(authenticateToken);
+// Apply middleware to all routes
 app.use(getTheme);
 
+// Routes
 app.get("/", (req, res) => {
   res.render("index", {
     title: "Home Page",
@@ -62,57 +92,31 @@ app.get("/", (req, res) => {
   });
 });
 
+// Authentication routes
 app.get("/login", (req, res) => {
-  if (req.user) {
+  if (req.isAuthenticated()) {
     return res.redirect("/");
   }
-
+  
   // Check if user was redirected from a protected route
-  const message = req.query.redirect
-    ? "Please log in to access this page"
-    : null;
-
+  const message = req.query.redirect ? "Please log in to access this page" : null;
+  
   res.render("login", {
     title: "Login",
     user: req.user,
     theme: req.theme,
-    message: message,
+    message: message
   });
 });
 
-app.post("/login", (req, res) => {
-  const { email, password } = req.body;
-
-  const user = users.find((u) => u.email === email && u.password === password);
-
-  if (!user) {
-    return res.status(401).render("login", {
-      title: "Login",
-      error: "Invalid credentials",
-      user: req.user,
-      theme: req.theme,
-    });
-  }
-
-  // Generate JWT
-  const token = jwt.sign(
-    { id: user.id, name: user.name, email: user.email },
-    JWT_SECRET,
-    { expiresIn: "24h" },
-  );
-
-  // Set httpOnly cookie
-  res.cookie("token", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-  });
-
-  res.redirect("/");
-});
+app.post("/login", passport.authenticate('local', {
+  successRedirect: '/',
+  failureRedirect: '/login',
+  failureFlash: false
+}));
 
 app.get("/register", (req, res) => {
-  if (req.user) {
+  if (req.isAuthenticated()) {
     return res.redirect("/");
   }
   res.render("register", {
@@ -124,7 +128,7 @@ app.get("/register", (req, res) => {
 
 app.post("/register", (req, res) => {
   const { name, email, password, age } = req.body;
-
+  
   // Check if user already exists
   const existingUser = users.find((u) => u.email === email);
   if (existingUser) {
@@ -141,45 +145,55 @@ app.post("/register", (req, res) => {
     id: users.length + 1,
     name,
     email,
-    password,
+    password, // In real app, hash this password
     age: parseInt(age),
   };
-
+  
   users.push(newUser);
 
-  // Generate JWT
-  const token = jwt.sign(
-    { id: newUser.id, name: newUser.name, email: newUser.email },
-    JWT_SECRET,
-    { expiresIn: "24h" },
-  );
-
-  // Set httpOnly cookie
-  res.cookie("token", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  // Automatically log in the new user
+  req.login(newUser, (err) => {
+    if (err) {
+      return res.status(500).render("register", {
+        title: "Register",
+        error: "Registration successful but login failed",
+        user: req.user,
+        theme: req.theme,
+      });
+    }
+    res.redirect("/");
   });
-
-  res.redirect("/");
 });
 
-app.get("/logout", (req, res) => {
-  res.clearCookie("token");
-  res.redirect("/");
+app.get("/logout", (req, res, next) => {
+  req.logout((err) => {
+    if (err) {
+      return next(err);
+    }
+    res.redirect("/");
+  });
 });
 
 // Theme setting route
 app.post("/set-theme", (req, res) => {
   const { theme } = req.body;
-
+  
   if (theme === "light" || theme === "dark") {
     res.cookie("theme", theme, {
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     });
   }
-
+  
   res.redirect(req.get("Referer") || "/");
+});
+
+// Protected route as required by the task
+app.get("/protected", requireAuth, (req, res) => {
+  res.render("protected", {
+    title: "Protected Page",
+    user: req.user,
+    theme: req.theme,
+  });
 });
 
 // Users routes (protected - require authentication)
@@ -213,6 +227,7 @@ app.get("/users/:userId", requireAuth, (req, res) => {
   });
 });
 
+// Articles routes (public)
 app.get("/articles", (req, res) => {
   res.render("articles/index.ejs", {
     title: "Articles List",

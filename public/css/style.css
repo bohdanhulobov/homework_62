@@ -411,6 +411,39 @@ h3 {
   color: #e0e0e0;
 }
 
+/* Protected page styles */
+.user-info,
+.session-info,
+.features {
+  background: rgba(255, 255, 255, 0.1);
+  margin: 20px 0;
+  padding: 20px;
+  border-radius: 10px;
+  border-left: 4px solid #667eea;
+}
+
+.dark .user-info,
+.dark .session-info,
+.dark .features {
+  background: rgba(255, 255, 255, 0.05);
+  border-left-color: #9bb5ff;
+}
+
+.features ul {
+  list-style: none;
+  padding: 0;
+}
+
+.features li {
+  margin: 10px 0;
+  padding: 5px 0;
+}
+
+.features li:before {
+  content: "";
+  margin-right: 10px;
+}
+
 /* Dark theme specific adjustments */
 .dark .card {
   background: rgba(40, 40, 40, 0.9);

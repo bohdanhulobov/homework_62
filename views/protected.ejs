@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body class="<%= theme || 'light' %>">
+    <div class="container">
+      <nav class="nav">
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/users">Users</a></li>
+          <li><a href="/articles">Articles</a></li>
+          <li><a href="/protected">Protected</a></li>
+          <% if (user) { %>
+          <li><a href="/logout">Logout (<%= user.name %>)</a></li>
+          <% } else { %>
+          <li><a href="/login">Login</a></li>
+          <li><a href="/register">Register</a></li>
+          <% } %>
+        </ul>
+      </nav>
+
+      <main>
+        <h1>Protected Page</h1>
+
+        <div class="card">
+          <h2>🔒 Access Granted!</h2>
+          <p>
+            This is a protected route that can only be accessed by authenticated
+            users.
+          </p>
+
+          <div class="user-info">
+            <h3>Current User Information:</h3>
+            <p><strong>Name:</strong> <%= user.name %></p>
+            <p><strong>Email:</strong> <%= user.email %></p>
+            <p><strong>Age:</strong> <%= user.age %></p>
+            <p><strong>User ID:</strong> <%= user.id %></p>
+          </div>
+
+          <div class="session-info">
+            <h3>Session Details:</h3>
+            <p>
+              You are currently authenticated using Passport.js with Express
+              sessions.
+            </p>
+            <p>Your session is stored securely with httpOnly cookies.</p>
+          </div>
+
+          <div class="features">
+            <h3>This protected route demonstrates:</h3>
+            <ul>
+              <li>✅ Passport.js local strategy authentication</li>
+              <li>✅ Express session management</li>
+              <li>✅ httpOnly cookie security</li>
+              <li>✅ Middleware-based route protection</li>
+              <li>✅ Automatic redirection for unauthorized access</li>
+            </ul>
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

@@ -1,14 +1,16 @@
-# Node.js Express Server with EJS, JWT and Cookie Management
+# Node.js Express Server with EJS, Passport Authentication and Session Management
 
 ## Project Description
 
 This is a modern web server built with Node.js and Express.js that demonstrates complete functionality for working with:
 
 - EJS templating engine
-- JWT (JSON Web Tokens) authentication
-- Cookie management for storing user preferences
+- Passport.js authentication with Local Strategy
+- Express session management for persistent authentication
+- Cookie-based session storage with httpOnly and secure flags
 - Static files and favicon
 - Dark and light theme support
+- Protected routes with middleware-based access control
 
 ## Installation and Setup
 
@@ -96,7 +98,9 @@ homework_62/
 - **Node.js** - JavaScript runtime environment
 - **Express.js** - Web framework
 - **EJS** - Template engine
-- **jsonwebtoken** - JWT tokens for authentication
+- **Passport.js** - Authentication middleware
+- **passport-local** - Local authentication strategy
+- **express-session** - Session management middleware
 - **cookie-parser** - Cookie handling
 - **cors** - Cross-Origin Resource Sharing
 
@@ -108,18 +112,12 @@ homework_62/
 
 ## Security
 
-### JWT Tokens
+### Passport Authentication
 
-- Tokens stored in httpOnly cookies
-- Expiration time: 24 hours
-- Signed with secret key
-- Automatic cleanup on logout
-
-### Cookies
-
-- httpOnly for JWT tokens
-- Secure flag for production
-- Proper expiration time
+- Local strategy using email and password
+- Secure session serialization and deserialization
+- Automatic login after registration
+- Proper logout functionality
 
 ## Test Data
 
