@@ -1,9 +1,28 @@
-# Node.js Express Server with EJS, Passport Authentication and Session Management
+# Node.js Express Server with EJS, Passport Authentication, Session Management and MongoDB Atlas Integration
 
 ## Project Description
 
 This is a modern web server built with Node.js and Express.js that demonstrates complete functionality for working with:
 
+- **MongoDB Atlas** cloud database integration
+- **Mongoose** ODM for MongoDB operations
+- EJS templating engine
+- Passport.js authentication with Local Strategy
+- Express session management for persistent authentication
+- Cookie-based session storage with httpOnly and secure flags
+- Static files and favicon
+- Dark and light theme support
+- Protected routes with middleware-based access control
+- Real-time MongoDB data dashboard
+
+# Node.js Express Server with EJS, Passport Authentication, Session Management and MongoDB Atlas Integration
+
+## Project Description
+
+This is a modern web server built with Node.js and Express.js that demonstrates complete functionality for working with:
+
+- **MongoDB Atlas** cloud database integration
+- **Mongoose** ODM for MongoDB operations
 - EJS templating engine
 - Passport.js authentication with Local Strategy
 - Express session management for persistent authentication
@@ -18,6 +37,7 @@ This is a modern web server built with Node.js and Express.js that demonstrates 
 
 - Node.js version 14.0 or higher
 - npm or yarn package manager
+- MongoDB Atlas account (free tier available)
 
 ### Installation Steps
 
@@ -34,7 +54,26 @@ This is a modern web server built with Node.js and Express.js that demonstrates 
    npm install
    ```
 
-3. **Start the server:**
+3. **Set up environment variables:**
+
+   Create a `.env` file in the root directory:
+
+   ```env
+   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/your-database-name?retryWrites=true&w=majority
+   SESSION_SECRET=your-super-secret-session-key-change-in-production
+   PORT=3000
+   NODE_ENV=development
+   ```
+
+   **MongoDB Atlas Setup:**
+
+   - Create a free account at <https://cloud.mongodb.com>
+   - Create a new cluster
+   - Go to Database Access and create a database user
+   - Go to Network Access and add your IP address (or 0.0.0.0/0 for development)
+   - Get your connection string from Connect -> Connect your application
+
+4. **Start the server:**
 
    ```bash
    # Regular start
@@ -44,21 +83,60 @@ This is a modern web server built with Node.js and Express.js that demonstrates 
    npm run dev
    ```
 
-4. **Open your browser:**
-   ```
+5. **Open your browser:**
+
+   ```text
    http://localhost:3000
    ```
 
+### Database Models
+
+#### User Model
+
+```javascript
+{
+  name: String (required),
+  email: String (required, unique, lowercase),
+  password: String (required),
+  age: Number (required, 1-120),
+  role: String (default: 'User'),
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+#### Article Model
+
+```javascript
+{
+  title: String (required),
+  content: String (required),
+  author: String (required),
+  date: Date (default: now),
+  published: Boolean (default: true),
+  tags: [String],
+  views: Number (default: 0),
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
 ## Project Structure
 
-```
+```text
 homework_62/
-├── server.js             # Main server file
+├── server.js             # Main server file with MongoDB integration
 ├── package.json          # Dependencies and scripts
 ├── README.md             # Project documentation
-├── data/                 # Demo data
-│   ├── users.js          # User list
-│   └── articles.js       # Article list
+├── .env                  # Environment variables (create from .env.example)
+├── .env.example          # Environment variables template
+├── .gitignore            # Git ignore file (includes .env)
+├── config/               # Configuration files
+│   ├── database.js       # MongoDB connection logic
+│   └── initData.js       # Database initialization and seeding
+├── models/               # Mongoose models
+│   ├── User.js           # User schema and model
+│   └── Article.js        # Article schema and model
 ├── public/               # Static files
 │   ├── favicon.ico       # Site icon
 │   └── css/
@@ -68,6 +146,7 @@ homework_62/
     ├── layout.ejs        # Base template
     ├── login.ejs         # Login page
     ├── register.ejs      # Registration page
+    ├── protected.ejs     # Protected page
     ├── error.ejs         # Error page
     ├── articles/         # Article templates
     │   ├── index.ejs     # Article list
@@ -77,71 +156,106 @@ homework_62/
         └── details.ejs   # User details
 ```
 
-### Middleware
-
-#### `authenticateToken`
-
-- Verifies JWT token from cookies
-- Adds user information to `req.user`
-- Works for all routes
-
-#### `getTheme`
-
-- Extracts theme preference from cookies
-- Sets default value ('light')
-- Adds theme to `req.theme`
-
 ## Technologies
 
 ### Backend
 
 - **Node.js** - JavaScript runtime environment
 - **Express.js** - Web framework
+- **MongoDB Atlas** - Cloud NoSQL database
+- **Mongoose** - MongoDB object modeling for Node.js
 - **EJS** - Template engine
 - **Passport.js** - Authentication middleware
 - **passport-local** - Local authentication strategy
 - **express-session** - Session management middleware
 - **cookie-parser** - Cookie handling
 - **cors** - Cross-Origin Resource Sharing
+- **dotenv** - Environment variable management
 
 ### Frontend
 
 - **HTML5** - Markup
 - **CSS3** - Styling with theme support
+- **Bootstrap** - UI components (via CDN)
 - **JavaScript** - Client-side logic
+
+## Routes
+
+### Public Routes
+
+- `GET /` - Home page
+- `GET /login` - Login page
+- `GET /register` - Registration page
+- `POST /login` - Process login
+- `POST /register` - Process registration
+- `GET /logout` - Logout user
+- `GET /articles` - List all articles
+- `GET /articles/:id` - View article details
+- `POST /set-theme` - Set user theme preference
+
+### Protected Routes (require authentication)
+
+- `GET /protected` - Protected page
+- `GET /users` - List all users
+- `GET /users/:id` - View user details
 
 ## Security
 
-### Passport Authentication
+### Authentication Features
 
-- Local strategy using email and password
-- Secure session serialization and deserialization
+- Passport Local Strategy with email/password
+- Secure session serialization with MongoDB user IDs
+- Password validation (in production, use bcrypt for hashing)
 - Automatic login after registration
-- Proper logout functionality
+- Session-based authentication with secure cookies
 
-## Test Data
+### Environment Security
 
-### Users for login:
+- Environment variables for sensitive data
+- MongoDB connection string protection
+- Session secret protection
+- Production-ready security settings
 
-- **Email:** alex@example.com, **Password:** password123
-- **Email:** maria@example.com, **Password:** password123
-- **Email:** sergey@example.com, **Password:** password123
-- **Email:** anna@example.com, **Password:** password123
+## Sample Data
+
+The application automatically seeds the database with sample data on first run.
+
+### Test Users for Login
+
+- **Email**: `alex@example.com`, **Password**: `password123` (Developer)
+- **Email**: `maria@example.com`, **Password**: `password123` (Designer)
+- **Email**: `sergey@example.com`, **Password**: `password123` (Project Manager)
+- **Email**: `anna@example.com`, **Password**: `password123` (Tester)
+
+### Sample Articles
+
+- Node.js Basics
+- Templating Engines in Express
+- REST API Development
+- MongoDB Atlas Integration
 
 ## Development
 
-### Run in development mode:
+### Run in Development Mode
 
 ```bash
 npm run dev
 ```
 
-### Environment variables structure:
+### Environment Variables
+
+Create a `.env` file with the following structure:
 
 ```env
-PORT=3000                    # Server port (default 3000)
-NODE_ENV=development         # Environment (development/production)
-JWT_SECRET=your-secret-key   # Secret key for JWT
+# MongoDB Atlas connection string
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database
+
+# Session secret for security
+SESSION_SECRET=your-super-secret-session-key
+
+# Server configuration
+PORT=3000
+NODE_ENV=development
 ```
 
 ## License
