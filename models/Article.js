@@ -40,7 +40,13 @@ const articleSchema = new mongoose.Schema(
   },
 );
 
-// Index for faster queries
-articleSchema.index({ title: 1, author: 1, date: -1 });
+articleSchema.index({ title: 1, author: 1, date: -1 }); // For searching articles by title and author, sorted by date
+articleSchema.index({ published: 1 }); // For filtering by published status
+articleSchema.index({ author: 1 }); // For filtering by author
+articleSchema.index({ createdAt: -1 }); // For sorting by creation date
+articleSchema.index({ tags: 1 }); // For filtering by tags
+articleSchema.index({ views: -1 }); // For sorting by popularity
+articleSchema.index({ published: 1, createdAt: -1 }); // Common query: get recent published articles
+articleSchema.index({ author: 1, published: 1 }); // Common query: get published articles by author
 
 module.exports = mongoose.model("Article", articleSchema);

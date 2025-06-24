@@ -265,3 +265,274 @@ MIT License
 ## Author
 
 Bohdan Hulobov
+
+## MongoDB Atlas CRUD API
+
+### Common Query Parameters
+
+All GET endpoints support the following query parameters:
+
+| Parameter | Description                                            | Format | Example                |
+| --------- | ------------------------------------------------------ | ------ | ---------------------- |
+| fields    | Comma-separated list of fields to include (projection) | String | `fields=name,email`    |
+| limit     | Maximum number of documents to return                  | Number | `limit=10`             |
+| skip      | Number of documents to skip (for pagination)           | Number | `skip=20`              |
+| sort      | Field(s) to sort by (prefix with - for descending)     | String | `sort=-createdAt,name` |
+
+### User API Endpoints
+
+#### Create Operations
+
+- **POST** `/api/users` - Create single user (insertOne)
+
+  ```json
+  // Request Body
+  {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "password123",
+    "age": 30,
+    "role": "Admin"
+  }
+  ```
+
+- **POST** `/api/users/many` - Create multiple users (insertMany)
+  ```json
+  // Request Body
+  {
+    "users": [
+      {
+        "name": "John Doe",
+        "email": "john@example.com",
+        "password": "password123",
+        "age": 30,
+        "role": "Admin"
+      },
+      {
+        "name": "Jane Smith",
+        "email": "jane@example.com",
+        "password": "password123",
+        "age": 25,
+        "role": "User"
+      }
+    ]
+  }
+  ```
+
+#### Read Operations
+
+- **GET** `/api/users` - Get all users with optional query parameters
+
+  ```
+  /api/users?fields=name,email&limit=5&skip=10&sort=-createdAt
+  ```
+
+- **GET** `/api/users/:id` - Get single user by ID
+  ```
+  /api/users/60d21b4667d0d8992e610c85
+  ```
+
+#### Update Operations
+
+- **PUT** `/api/users/:id` - Update single user (updateOne)
+
+  ```json
+  // Request Body
+  {
+    "name": "Updated Name",
+    "email": "newemail@example.com",
+    "age": 31
+  }
+  ```
+
+- **PATCH** `/api/users` - Update multiple users (updateMany)
+
+  ```json
+  // Request Body
+  {
+    "filter": { "role": "User" },
+    "update": { "$set": { "role": "Member" } }
+  }
+  ```
+
+- **PUT** `/api/users/:id/replace` - Replace entire user document (replaceOne)
+  ```json
+  // Request Body (all fields required)
+  {
+    "name": "Complete New Name",
+    "email": "completely@new.com",
+    "password": "newpassword123",
+    "age": 40,
+    "role": "SuperAdmin"
+  }
+  ```
+
+#### Delete Operations
+
+- **DELETE** `/api/users/:id` - Delete single user (deleteOne)
+
+  ```
+  /api/users/60d21b4667d0d8992e610c85
+  ```
+
+- **DELETE** `/api/users` - Delete multiple users (deleteMany)
+  ```json
+  // Request Body
+  {
+    "filter": { "role": "Deactivated" }
+  }
+  ```
+
+### Article API Endpoints
+
+#### Create Operations
+
+- **POST** `/api/articles` - Create single article (insertOne)
+
+  ```json
+  // Request Body
+  {
+    "title": "MongoDB Atlas Integration",
+    "content": "This article explains how to integrate with MongoDB Atlas...",
+    "author": "John Doe",
+    "tags": ["mongodb", "atlas", "database"],
+    "published": true
+  }
+  ```
+
+- **POST** `/api/articles/many` - Create multiple articles (insertMany)
+  ```json
+  // Request Body
+  {
+    "articles": [
+      {
+        "title": "MongoDB Atlas Integration",
+        "content": "This article explains how to integrate with MongoDB Atlas...",
+        "author": "John Doe",
+        "tags": ["mongodb", "atlas", "database"],
+        "published": true
+      },
+      {
+        "title": "Express.js REST API",
+        "content": "Building a REST API with Express.js is straightforward...",
+        "author": "Jane Smith",
+        "tags": ["express", "api", "rest"],
+        "published": true
+      }
+    ]
+  }
+  ```
+
+#### Read Operations
+
+- **GET** `/api/articles` - Get all articles with optional query parameters
+
+  ```
+  /api/articles?fields=title,author&limit=5&skip=10&sort=-createdAt&author=John&published=true&tags=mongodb
+  ```
+
+- **GET** `/api/articles/:id` - Get single article by ID (increments view count)
+  ```
+  /api/articles/60d21b4667d0d8992e610c85
+  ```
+
+#### Update Operations
+
+- **PUT** `/api/articles/:id` - Update single article (updateOne)
+
+  ```json
+  // Request Body
+  {
+    "title": "Updated Title",
+    "content": "Updated content...",
+    "tags": ["updated", "tags"]
+  }
+  ```
+
+- **PATCH** `/api/articles` - Update multiple articles (updateMany)
+
+  ```json
+  // Request Body
+  {
+    "filter": { "author": "John Doe" },
+    "update": { "$set": { "author": "John Doe Jr." } }
+  }
+  ```
+
+- **PUT** `/api/articles/:id/replace` - Replace entire article document (replaceOne)
+  ```json
+  // Request Body (all fields required)
+  {
+    "title": "Completely New Title",
+    "content": "Completely new content...",
+    "author": "New Author",
+    "tags": ["new", "tags"],
+    "published": true
+  }
+  ```
+
+#### Delete Operations
+
+- **DELETE** `/api/articles/:id` - Delete single article (deleteOne)
+
+  ```
+  /api/articles/60d21b4667d0d8992e610c85
+  ```
+
+- **DELETE** `/api/articles` - Delete multiple articles (deleteMany)
+  ```json
+  // Request Body
+  {
+    "filter": { "published": false }
+  }
+  ```
+
+### Response Format
+
+All API endpoints return responses in a consistent format:
+
+#### Success Response
+
+```json
+{
+  "success": true,
+  "message": "Operation successful",
+  "data": { ... },  // The data returned (may be an object or array)
+  "count": 10,      // For list operations, the count of returned items
+  "total": 100      // For list operations, the total count of items
+}
+```
+
+#### Error Response
+
+```json
+{
+  "success": false,
+  "error": "Error message",
+  "details": "Detailed error information"
+}
+```
+
+### MongoDB Indexes
+
+For optimized query performance, the following indexes have been created:
+
+#### User Model Indexes
+
+- `email`: Unique index
+- `name`: Regular index
+- `role`: Regular index
+- `age`: Regular index
+- `createdAt`: Regular index (descending)
+- `email,role`: Compound index
+
+#### Article Model Indexes
+
+- `title,author,date`: Compound index
+- `published`: Regular index
+- `author`: Regular index
+- `createdAt`: Regular index (descending)
+- `tags`: Regular index
+- `views`: Regular index (descending)
+- `published,createdAt`: Compound index
+- `author,published`: Compound index

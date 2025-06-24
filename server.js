@@ -345,24 +345,708 @@ app.get("/articles/:articleId", async (req, res) => {
   }
 });
 
-// Handle 404 errors
+// Middleware for API routes - return JSON responses
+const apiMiddleware = (req, res, next) => {
+  res.header("Content-Type", "application/json");
+  next();
+};
+
+// CREATE Operations
+// POST /api/users - Create single user (insertOne)
+app.post("/api/users", apiMiddleware, async (req, res) => {
+  try {
+    const { name, email, password, age, role } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !password || !age) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required fields: name, email, password, age",
+      });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        error: "User with this email already exists",
+      });
+    }
+
+    const newUser = new User({
+      name,
+      email: email.toLowerCase(),
+      password,
+      age: parseInt(age),
+      role: role || "User",
+    });
+
+    const savedUser = await newUser.save();
+
+    res.status(201).json({
+      success: true,
+      message: "User created successfully",
+      data: savedUser,
+    });
+  } catch (error) {
+    console.error("Error creating user:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to create user",
+      details: error.message,
+    });
+  }
+});
+
+// POST /api/users/many - Create multiple users (insertMany)
+app.post("/api/users/many", apiMiddleware, async (req, res) => {
+  try {
+    const { users } = req.body;
+
+    if (!Array.isArray(users) || users.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Request body must contain an array of users",
+      });
+    }
+
+    // Process each user
+    const processedUsers = users.map((user) => ({
+      ...user,
+      email: user.email?.toLowerCase(),
+      role: user.role || "User",
+    }));
+
+    const savedUsers = await User.insertMany(processedUsers, {
+      ordered: false,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `${savedUsers.length} users created successfully`,
+      data: savedUsers,
+    });
+  } catch (error) {
+    console.error("Error creating multiple users:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to create users",
+      details: error.message,
+    });
+  }
+});
+
+// READ Operations with Projection
+// GET /api/users - Get all users with optional projection
+app.get("/api/users", apiMiddleware, async (req, res) => {
+  try {
+    const { fields, limit, skip, sort } = req.query;
+
+    let query = User.find({});
+
+    // Apply projection if specified
+    if (fields) {
+      const projection = fields.split(",").join(" ");
+      query = query.select(projection);
+    }
+
+    // Apply pagination
+    if (limit) query = query.limit(parseInt(limit));
+    if (skip) query = query.skip(parseInt(skip));
+
+    // Apply sorting
+    if (sort) {
+      const sortObj = {};
+      sort.split(",").forEach((field) => {
+        if (field.startsWith("-")) {
+          sortObj[field.substring(1)] = -1;
+        } else {
+          sortObj[field] = 1;
+        }
+      });
+      query = query.sort(sortObj);
+    }
+
+    const users = await query.exec();
+    const total = await User.countDocuments();
+
+    res.json({
+      success: true,
+      count: users.length,
+      total: total,
+      data: users,
+    });
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch users",
+      details: error.message,
+    });
+  }
+});
+
+// GET /api/users/:id - Get single user by ID
+app.get("/api/users/:id", apiMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch user",
+      details: error.message,
+    });
+  }
+});
+
+// UPDATE Operations
+// PUT /api/users/:id - Update single user (updateOne)
+app.put("/api/users/:id", apiMiddleware, async (req, res) => {
+  try {
+    const { name, email, age, role } = req.body;
+    const updateData = {};
+
+    if (name) updateData.name = name;
+    if (email) updateData.email = email.toLowerCase();
+    if (age) updateData.age = parseInt(age);
+    if (role) updateData.role = role;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true },
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        error: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "User updated successfully",
+      data: updatedUser,
+    });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to update user",
+      details: error.message,
+    });
+  }
+});
+
+// PATCH /api/users - Update multiple users (updateMany)
+app.patch("/api/users", apiMiddleware, async (req, res) => {
+  try {
+    const { filter, update } = req.body;
+
+    if (!filter || !update) {
+      return res.status(400).json({
+        success: false,
+        error: "Both filter and update objects are required",
+      });
+    }
+
+    const result = await User.updateMany(filter, update);
+
+    res.json({
+      success: true,
+      message: `${result.modifiedCount} users updated successfully`,
+      matchedCount: result.matchedCount,
+      modifiedCount: result.modifiedCount,
+    });
+  } catch (error) {
+    console.error("Error updating multiple users:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to update users",
+      details: error.message,
+    });
+  }
+});
+
+// PUT /api/users/:id/replace - Replace entire user document (replaceOne)
+app.put("/api/users/:id/replace", apiMiddleware, async (req, res) => {
+  try {
+    const { name, email, password, age, role } = req.body;
+
+    // Validate required fields for replacement
+    if (!name || !email || !password || !age) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "All required fields must be provided for replacement: name, email, password, age",
+      });
+    }
+
+    const replacementData = {
+      name,
+      email: email.toLowerCase(),
+      password,
+      age: parseInt(age),
+      role: role || "User",
+    };
+
+    const replacedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      replacementData,
+      { new: true, overwrite: true, runValidators: true },
+    );
+
+    if (!replacedUser) {
+      return res.status(404).json({
+        success: false,
+        error: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "User replaced successfully",
+      data: replacedUser,
+    });
+  } catch (error) {
+    console.error("Error replacing user:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to replace user",
+      details: error.message,
+    });
+  }
+});
+
+// DELETE Operations
+// DELETE /api/users/:id - Delete single user (deleteOne)
+app.delete("/api/users/:id", apiMiddleware, async (req, res) => {
+  try {
+    const deletedUser = await User.findByIdAndDelete(req.params.id);
+
+    if (!deletedUser) {
+      return res.status(404).json({
+        success: false,
+        error: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "User deleted successfully",
+      data: deletedUser,
+    });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete user",
+      details: error.message,
+    });
+  }
+});
+
+// DELETE /api/users - Delete multiple users (deleteMany)
+app.delete("/api/users", apiMiddleware, async (req, res) => {
+  try {
+    const { filter } = req.body;
+
+    if (!filter) {
+      return res.status(400).json({
+        success: false,
+        error: "Filter object is required for bulk deletion",
+      });
+    }
+
+    const result = await User.deleteMany(filter);
+
+    res.json({
+      success: true,
+      message: `${result.deletedCount} users deleted successfully`,
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    console.error("Error deleting multiple users:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete users",
+      details: error.message,
+    });
+  }
+});
+
+// CREATE Operations
+// POST /api/articles - Create single article (insertOne)
+app.post("/api/articles", apiMiddleware, async (req, res) => {
+  try {
+    const { title, content, author, tags, published } = req.body;
+
+    if (!title || !content || !author) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required fields: title, content, author",
+      });
+    }
+
+    const newArticle = new Article({
+      title,
+      content,
+      author,
+      tags: tags || [],
+      published: published !== undefined ? published : true,
+    });
+
+    const savedArticle = await newArticle.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Article created successfully",
+      data: savedArticle,
+    });
+  } catch (error) {
+    console.error("Error creating article:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to create article",
+      details: error.message,
+    });
+  }
+});
+
+// POST /api/articles/many - Create multiple articles (insertMany)
+app.post("/api/articles/many", apiMiddleware, async (req, res) => {
+  try {
+    const { articles } = req.body;
+
+    if (!Array.isArray(articles) || articles.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Request body must contain an array of articles",
+      });
+    }
+
+    const savedArticles = await Article.insertMany(articles, {
+      ordered: false,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `${savedArticles.length} articles created successfully`,
+      data: savedArticles,
+    });
+  } catch (error) {
+    console.error("Error creating multiple articles:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to create articles",
+      details: error.message,
+    });
+  }
+});
+
+// READ Operations with Projection
+// GET /api/articles - Get all articles with optional projection and filtering
+app.get("/api/articles", apiMiddleware, async (req, res) => {
+  try {
+    const { fields, limit, skip, sort, author, published, tags } = req.query;
+
+    // Build filter object
+    const filter = {};
+    if (author) filter.author = new RegExp(author, "i");
+    if (published !== undefined) filter.published = published === "true";
+    if (tags) filter.tags = { $in: tags.split(",") };
+
+    let query = Article.find(filter);
+
+    // Apply projection if specified
+    if (fields) {
+      const projection = fields.split(",").join(" ");
+      query = query.select(projection);
+    }
+
+    // Apply pagination
+    if (limit) query = query.limit(parseInt(limit));
+    if (skip) query = query.skip(parseInt(skip));
+
+    // Apply sorting
+    if (sort) {
+      const sortObj = {};
+      sort.split(",").forEach((field) => {
+        if (field.startsWith("-")) {
+          sortObj[field.substring(1)] = -1;
+        } else {
+          sortObj[field] = 1;
+        }
+      });
+      query = query.sort(sortObj);
+    } else {
+      query = query.sort({ createdAt: -1 });
+    }
+
+    const articles = await query.exec();
+    const total = await Article.countDocuments(filter);
+
+    res.json({
+      success: true,
+      count: articles.length,
+      total: total,
+      data: articles,
+    });
+  } catch (error) {
+    console.error("Error fetching articles:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch articles",
+      details: error.message,
+    });
+  }
+});
+
+// GET /api/articles/:id - Get single article by ID
+app.get("/api/articles/:id", apiMiddleware, async (req, res) => {
+  try {
+    const article = await Article.findById(req.params.id);
+
+    if (!article) {
+      return res.status(404).json({
+        success: false,
+        error: "Article not found",
+      });
+    }
+
+    // Increment view count
+    article.views = (article.views || 0) + 1;
+    await article.save();
+
+    res.json({
+      success: true,
+      data: article,
+    });
+  } catch (error) {
+    console.error("Error fetching article:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch article",
+      details: error.message,
+    });
+  }
+});
+
+// UPDATE Operations
+// PUT /api/articles/:id - Update single article (updateOne)
+app.put("/api/articles/:id", apiMiddleware, async (req, res) => {
+  try {
+    const { title, content, author, tags, published } = req.body;
+    const updateData = {};
+
+    if (title) updateData.title = title;
+    if (content) updateData.content = content;
+    if (author) updateData.author = author;
+    if (tags) updateData.tags = tags;
+    if (published !== undefined) updateData.published = published;
+
+    const updatedArticle = await Article.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true },
+    );
+
+    if (!updatedArticle) {
+      return res.status(404).json({
+        success: false,
+        error: "Article not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Article updated successfully",
+      data: updatedArticle,
+    });
+  } catch (error) {
+    console.error("Error updating article:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to update article",
+      details: error.message,
+    });
+  }
+});
+
+// PATCH /api/articles - Update multiple articles (updateMany)
+app.patch("/api/articles", apiMiddleware, async (req, res) => {
+  try {
+    const { filter, update } = req.body;
+
+    if (!filter || !update) {
+      return res.status(400).json({
+        success: false,
+        error: "Both filter and update objects are required",
+      });
+    }
+
+    const result = await Article.updateMany(filter, update);
+
+    res.json({
+      success: true,
+      message: `${result.modifiedCount} articles updated successfully`,
+      matchedCount: result.matchedCount,
+      modifiedCount: result.modifiedCount,
+    });
+  } catch (error) {
+    console.error("Error updating multiple articles:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to update articles",
+      details: error.message,
+    });
+  }
+});
+
+// PUT /api/articles/:id/replace - Replace entire article document (replaceOne)
+app.put("/api/articles/:id/replace", apiMiddleware, async (req, res) => {
+  try {
+    const { title, content, author, tags, published } = req.body;
+
+    if (!title || !content || !author) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "All required fields must be provided for replacement: title, content, author",
+      });
+    }
+
+    const replacementData = {
+      title,
+      content,
+      author,
+      tags: tags || [],
+      published: published !== undefined ? published : true,
+      views: 0,
+    };
+
+    const replacedArticle = await Article.findByIdAndUpdate(
+      req.params.id,
+      replacementData,
+      { new: true, overwrite: true, runValidators: true },
+    );
+
+    if (!replacedArticle) {
+      return res.status(404).json({
+        success: false,
+        error: "Article not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Article replaced successfully",
+      data: replacedArticle,
+    });
+  } catch (error) {
+    console.error("Error replacing article:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to replace article",
+      details: error.message,
+    });
+  }
+});
+
+// DELETE Operations
+// DELETE /api/articles/:id - Delete single article (deleteOne)
+app.delete("/api/articles/:id", apiMiddleware, async (req, res) => {
+  try {
+    const deletedArticle = await Article.findByIdAndDelete(req.params.id);
+
+    if (!deletedArticle) {
+      return res.status(404).json({
+        success: false,
+        error: "Article not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Article deleted successfully",
+      data: deletedArticle,
+    });
+  } catch (error) {
+    console.error("Error deleting article:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete article",
+      details: error.message,
+    });
+  }
+});
+
+// DELETE /api/articles - Delete multiple articles (deleteMany)
+app.delete("/api/articles", apiMiddleware, async (req, res) => {
+  try {
+    const { filter } = req.body;
+
+    if (!filter) {
+      return res.status(400).json({
+        success: false,
+        error: "Filter object is required for bulk deletion",
+      });
+    }
+
+    const result = await Article.deleteMany(filter);
+
+    res.json({
+      success: true,
+      message: `${result.deletedCount} articles deleted successfully`,
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    console.error("Error deleting multiple articles:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete articles",
+      details: error.message,
+    });
+  }
+});
+
+// 404 Handler - must be after all routes
 app.use((req, res) => {
   res.status(404).render("error", {
     title: "Page Not Found",
-    message: "The requested page does not exist",
+    message: "The requested page could not be found",
     user: req.user,
-    theme: req.theme,
+    theme: req.theme || "light",
+  });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error("Unhandled error:", err);
+  res.status(500).render("error", {
+    title: "Server Error",
+    message: "An internal server error occurred",
+    user: req.user,
+    theme: req.theme || "light",
   });
 });
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(
-    `MongoDB integration: ${
-      process.env.MONGODB_URI ? "Configured" : "Not configured"
-    }`,
-  );
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
-
-module.exports = app;

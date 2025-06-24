@@ -34,7 +34,11 @@ const userSchema = new mongoose.Schema(
   },
 );
 
-// Create unique index for email
-userSchema.index({ email: 1 }, { unique: true });
+userSchema.index({ email: 1 }, { unique: true }); // Ensure email is unique
+userSchema.index({ name: 1 }); // For searching by name
+userSchema.index({ role: 1 }); // For filtering by role
+userSchema.index({ age: 1 }); // For filtering and sorting by age
+userSchema.index({ createdAt: -1 }); // For sorting by creation date (descending)
+userSchema.index({ email: 1, role: 1 }); // Compound index for email + role queries
 
 module.exports = mongoose.model("User", userSchema);
