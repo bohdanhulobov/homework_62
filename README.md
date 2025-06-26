@@ -218,7 +218,7 @@ homework_62/
 
 ## Sample Data
 
-The application automatically seeds the database with sample data on first run.
+The application automatically seeds the database with comprehensive sample data on first run to demonstrate cursor and aggregation functionality effectively.
 
 ### Test Users for Login
 
@@ -227,12 +227,20 @@ The application automatically seeds the database with sample data on first run.
 - **Email**: `sergey@example.com`, **Password**: `password123` (Project Manager)
 - **Email**: `anna@example.com`, **Password**: `password123` (Tester)
 
-### Sample Articles
+### Seed Data Scale
 
-- Node.js Basics
-- Templating Engines in Express
-- REST API Development
-- MongoDB Atlas Integration
+- **Users**: 104 users total (4 core users + 100 generated users)
+
+  - Diverse roles: Developer, Designer, Tester, Project Manager, DevOps, Analyst, etc.
+  - Random ages between 20-60
+  - Unique email addresses for testing
+
+- **Articles**: 54 articles total (4 core articles + 50 generated articles)
+  - Various authors from the user pool
+  - Random view counts (0-99 views)
+  - 90% published, 10% draft status
+  - Diverse topics: React, Vue, Angular, Node.js, MongoDB, Docker, etc.
+  - Multiple tags per article (1-4 tags)
 
 ## Development
 
@@ -536,3 +544,61 @@ For optimized query performance, the following indexes have been created:
 - `views`: Regular index (descending)
 - `published,createdAt`: Compound index
 - `author,published`: Compound index
+
+## Advanced Data Operations: Cursors & Aggregation
+
+### 1. User Streaming with Cursor
+
+**GET /api/users/cursor**
+
+- Returns all users as a JSON array using MongoDB cursor (efficient for large datasets, doesn't hold all documents in memory).
+- Response is streamed in chunks, allowing processing of large collections without overloading the server.
+- Ideal for handling thousands of users without memory overflow.
+
+**Example request:**
+
+```bash
+curl -X GET http://localhost:3000/api/users/cursor
+```
+
+**Expected response:**
+
+```json
+[
+  { "_id": "...", "name": "Alex", "email": "alex@example.com", ... },
+  { "_id": "...", "name": "Maria", "email": "maria@example.com", ... },
+  ...
+]
+```
+
+### 2. Articles Aggregation Statistics
+
+**GET /api/articles/stats**
+
+- Returns comprehensive statistics for the articles collection using MongoDB aggregation pipeline:
+  - `totalArticles`: total number of articles
+  - `avgViews`: average number of views per article
+  - `totalViews`: sum of all article views
+  - `uniqueAuthorsCount`: number of unique authors
+  - `publishedCount`: number of published articles
+
+**Example request:**
+
+```bash
+curl -X GET http://localhost:3000/api/articles/stats
+```
+
+**Expected response:**
+
+```json
+{
+  "success": true,
+  "stats": {
+    "totalArticles": 50,
+    "avgViews": 12.4,
+    "totalViews": 620,
+    "uniqueAuthorsCount": 15,
+    "publishedCount": 45
+  }
+}
+```

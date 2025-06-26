@@ -487,6 +487,30 @@ app.get("/api/users", apiMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/users/cursor - Stream users using MongoDB cursor (efficient for large datasets)
+app.get("/api/users/cursor", apiMiddleware, async (req, res) => {
+  try {
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+    const cursor = User.find({}).cursor();
+    let first = true;
+    res.write("[");
+    for await (const user of cursor) {
+      if (!first) res.write(",");
+      res.write(JSON.stringify(user));
+      first = false;
+    }
+    res.write("]");
+    res.end();
+  } catch (error) {
+    console.error("Error streaming users with cursor:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to stream users",
+      details: error.message,
+    });
+  }
+});
+
 // GET /api/users/:id - Get single user by ID
 app.get("/api/users/:id", apiMiddleware, async (req, res) => {
   try {
@@ -812,6 +836,45 @@ app.get("/api/articles", apiMiddleware, async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Failed to fetch articles",
+      details: error.message,
+    });
+  }
+});
+
+// GET /api/articles/stats - Aggregation: statistics for articles
+app.get("/api/articles/stats", apiMiddleware, async (req, res) => {
+  try {
+    const stats = await Article.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalArticles: { $sum: 1 },
+          avgViews: { $avg: "$views" },
+          totalViews: { $sum: "$views" },
+          uniqueAuthors: { $addToSet: "$author" },
+          publishedCount: { $sum: { $cond: ["$published", 1, 0] } },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalArticles: 1,
+          avgViews: 1,
+          totalViews: 1,
+          uniqueAuthorsCount: { $size: "$uniqueAuthors" },
+          publishedCount: 1,
+        },
+      },
+    ]);
+    res.json({
+      success: true,
+      stats: stats[0] || {},
+    });
+  } catch (error) {
+    console.error("Error aggregating article stats:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to aggregate article stats",
       details: error.message,
     });
   }
