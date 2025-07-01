@@ -1,10 +1,10 @@
-# Node.js Express Server with EJS, Passport Authentication, Session Management and MongoDB Atlas Integration
+# Node.js Express Server with EJS, Passport Authentication, Session Management and MongoDB Integration
 
 ## Project Description
 
 This is a modern web server built with Node.js and Express.js that demonstrates complete functionality for working with:
 
-- **MongoDB Atlas** cloud database integration
+- **MongoDB** database integration (Atlas cloud or local/Docker)
 - **Mongoose** ODM for MongoDB operations
 - EJS templating engine
 - Passport.js authentication with Local Strategy
@@ -14,24 +14,75 @@ This is a modern web server built with Node.js and Express.js that demonstrates 
 - Dark and light theme support
 - Protected routes with middleware-based access control
 - Real-time MongoDB data dashboard
+- **Docker containerization** for easy deployment and development
+- Complete CRUD API with advanced MongoDB operations
 
-# Node.js Express Server with EJS, Passport Authentication, Session Management and MongoDB Atlas Integration
+## 🚀 Quick Start with Docker (Recommended)
 
-## Project Description
+### Prerequisites
 
-This is a modern web server built with Node.js and Express.js that demonstrates complete functionality for working with:
+- Docker Desktop installed on your system
+- Docker Compose (included with Docker Desktop)
 
-- **MongoDB Atlas** cloud database integration
-- **Mongoose** ODM for MongoDB operations
-- EJS templating engine
-- Passport.js authentication with Local Strategy
-- Express session management for persistent authentication
-- Cookie-based session storage with httpOnly and secure flags
-- Static files and favicon
-- Dark and light theme support
-- Protected routes with middleware-based access control
+### Launch Application
 
-## Installation and Setup
+1. **Clone the repository:**
+
+   ```bash
+   git clone <repository-url>
+   cd homework_62
+   ```
+
+2. **Start with Docker Compose:**
+
+   ```bash
+   docker compose up
+   ```
+
+   Or run in background:
+
+   ```bash
+   docker compose up -d
+   ```
+
+3. **Access the application:**
+   ```
+   http://localhost:3000
+   ```
+
+### Docker Commands
+
+**Start application:**
+
+```bash
+docker compose up
+```
+
+**Start in background:**
+
+```bash
+docker compose up -d
+```
+
+**Stop application:**
+
+```bash
+docker compose down
+```
+
+**View logs:**
+
+```bash
+docker compose logs app
+```
+
+**Rebuild and start:**
+
+```bash
+docker compose up --build
+```
+
+## 🛠️ Manual Installation (Alternative)
 
 ### System Requirements
 
