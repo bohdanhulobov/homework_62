@@ -1,11 +1,11 @@
-# Node.js Express Server with EJS, Passport Authentication, Session Management and MongoDB Integration
+# Node.js Express Server with EJS, Passport Authentication, Session Management and Mongoose ODM
 
 ## Project Description
 
 This is a modern web server built with Node.js and Express.js that demonstrates complete functionality for working with:
 
-- **MongoDB** database integration (Atlas cloud or local/Docker)
-- **Mongoose** ODM for MongoDB operations
+- **MongoDB** database integration (Atlas cloud or local/Docker) using **Mongoose ODM**
+- **Mongoose** Object Document Mapping with schemas, validation, and middleware
 - EJS templating engine
 - Passport.js authentication with Local Strategy
 - Express session management for persistent authentication
@@ -15,7 +15,9 @@ This is a modern web server built with Node.js and Express.js that demonstrates 
 - Protected routes with middleware-based access control
 - Real-time MongoDB data dashboard
 - **Docker containerization** for easy deployment and development
-- Complete CRUD API with advanced MongoDB operations
+- Complete CRUD API with advanced Mongoose operations
+- Schema validation and error handling
+- Mongoose virtuals, statics, and instance methods
 
 ## 🚀 Quick Start with Docker (Recommended)
 

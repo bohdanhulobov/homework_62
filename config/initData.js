@@ -137,6 +137,8 @@ const initializeData = async () => {
           author: "Alexander Petrenko",
           tags: ["nodejs", "javascript", "backend"],
           views: Math.floor(Math.random() * 50),
+          category: "Programming",
+          featured: true,
         },
         {
           title: "Templating Engines in Express",
@@ -145,6 +147,8 @@ const initializeData = async () => {
           author: "Maria Ivanenko",
           tags: ["express", "templating", "ejs", "pug"],
           views: Math.floor(Math.random() * 50),
+          category: "Programming",
+          featured: false,
         },
         {
           title: "REST API Development",
@@ -153,6 +157,8 @@ const initializeData = async () => {
           author: "Sergey Kovalenko",
           tags: ["rest", "api", "http", "web-services"],
           views: Math.floor(Math.random() * 50),
+          category: "Technology",
+          featured: true,
         },
         {
           title: "MongoDB Atlas Integration",
@@ -161,6 +167,8 @@ const initializeData = async () => {
           author: "Anna Sidorenko",
           tags: ["mongodb", "atlas", "cloud", "database"],
           views: Math.floor(Math.random() * 50),
+          category: "Technology",
+          featured: false,
         },
       ];
 
@@ -258,9 +266,20 @@ const initializeData = async () => {
           articleTopics[Math.floor(Math.random() * articleTopics.length)];
         const author = authors[Math.floor(Math.random() * authors.length)];
         const published = Math.random() > 0.1; // 90% published
+        const featured = Math.random() > 0.8; // 20% featured
         const numTags = Math.floor(Math.random() * 4) + 1; // 1-4 tags
         const shuffledTags = [...tagOptions].sort(() => 0.5 - Math.random());
         const selectedTags = shuffledTags.slice(0, numTags);
+        const categories = [
+          "Technology",
+          "Science",
+          "Programming",
+          "Design",
+          "Business",
+          "General",
+        ];
+        const category =
+          categories[Math.floor(Math.random() * categories.length)];
 
         additionalArticles.push({
           title: `${topic} - Advanced Guide`,
@@ -268,6 +287,8 @@ const initializeData = async () => {
           author: author,
           tags: selectedTags,
           published: published,
+          featured: featured,
+          category: category,
           views: Math.floor(Math.random() * 100), // Random views 0-99
         });
       }

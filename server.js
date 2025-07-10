@@ -161,22 +161,11 @@ app.post("/register", async (req, res) => {
   try {
     const { name, email, password, age } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
-    if (existingUser) {
-      return res.status(400).render("register", {
-        title: "Register",
-        error: "User with this email already exists",
-        user: req.user,
-        theme: req.theme,
-      });
-    }
-
     // Create new user
     const newUser = new User({
       name,
-      email: email.toLowerCase(),
-      password, // In real app, hash this password
+      email,
+      password,
       age: parseInt(age),
       role: "User",
     });
@@ -197,9 +186,19 @@ app.post("/register", async (req, res) => {
     });
   } catch (error) {
     console.error("Registration error:", error);
-    res.status(500).render("register", {
+
+    let errorMessage = "Registration failed. Please try again.";
+
+    if (error.name === "ValidationError") {
+      const errors = Object.values(error.errors).map((err) => err.message);
+      errorMessage = errors.join(", ");
+    } else if (error.code === 11000) {
+      errorMessage = "User with this email already exists";
+    }
+
+    res.status(400).render("register", {
       title: "Register",
-      error: "Registration failed. Please try again.",
+      error: errorMessage,
       user: req.user,
       theme: req.theme,
     });
@@ -325,8 +324,7 @@ app.get("/articles/:articleId", async (req, res) => {
     }
 
     // Increment view count
-    article.views = (article.views || 0) + 1;
-    await article.save();
+    await article.incrementViews();
 
     res.render("articles/details.ejs", {
       title: article.title,
@@ -352,31 +350,14 @@ const apiMiddleware = (req, res, next) => {
 };
 
 // CREATE Operations
-// POST /api/users - Create single user (insertOne)
+// POST /api/users - Create single user
 app.post("/api/users", apiMiddleware, async (req, res) => {
   try {
     const { name, email, password, age, role } = req.body;
 
-    // Validate required fields
-    if (!name || !email || !password || !age) {
-      return res.status(400).json({
-        success: false,
-        error: "Missing required fields: name, email, password, age",
-      });
-    }
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
-    if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        error: "User with this email already exists",
-      });
-    }
-
     const newUser = new User({
       name,
-      email: email.toLowerCase(),
+      email,
       password,
       age: parseInt(age),
       role: role || "User",
@@ -387,10 +368,29 @@ app.post("/api/users", apiMiddleware, async (req, res) => {
     res.status(201).json({
       success: true,
       message: "User created successfully",
-      data: savedUser,
+      data: savedUser.getPublicProfile(),
     });
   } catch (error) {
     console.error("Error creating user:", error);
+
+    if (error.name === "ValidationError") {
+      const validationErrors = {};
+      Object.keys(error.errors).forEach((key) => {
+        validationErrors[key] = error.errors[key].message;
+      });
+
+      return res.status(400).json({
+        success: false,
+        error: "Validation failed",
+        details: validationErrors,
+      });
+    } else if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        error: "User with this email already exists",
+      });
+    }
+
     res.status(500).json({
       success: false,
       error: "Failed to create user",
@@ -399,7 +399,7 @@ app.post("/api/users", apiMiddleware, async (req, res) => {
   }
 });
 
-// POST /api/users/many - Create multiple users (insertMany)
+// POST /api/users/many - Create multiple users
 app.post("/api/users/many", apiMiddleware, async (req, res) => {
   try {
     const { users } = req.body;
@@ -411,24 +411,33 @@ app.post("/api/users/many", apiMiddleware, async (req, res) => {
       });
     }
 
-    // Process each user
-    const processedUsers = users.map((user) => ({
-      ...user,
-      email: user.email?.toLowerCase(),
-      role: user.role || "User",
-    }));
-
-    const savedUsers = await User.insertMany(processedUsers, {
+    const savedUsers = await User.insertMany(users, {
       ordered: false,
+      runValidators: true,
     });
 
     res.status(201).json({
       success: true,
       message: `${savedUsers.length} users created successfully`,
-      data: savedUsers,
+      data: savedUsers.map((user) => user.getPublicProfile()),
     });
   } catch (error) {
     console.error("Error creating multiple users:", error);
+
+    if (error.writeErrors) {
+      const validationErrors = error.writeErrors.map((err) => ({
+        index: err.index,
+        error: err.errmsg,
+      }));
+
+      return res.status(400).json({
+        success: false,
+        error: "Some users failed validation",
+        details: validationErrors,
+        insertedCount: error.result?.insertedCount || 0,
+      });
+    }
+
     res.status(500).json({
       success: false,
       error: "Failed to create users",
@@ -475,7 +484,7 @@ app.get("/api/users", apiMiddleware, async (req, res) => {
       success: true,
       count: users.length,
       total: total,
-      data: users,
+      data: users.map((user) => user.getPublicProfile()),
     });
   } catch (error) {
     console.error("Error fetching users:", error);
@@ -487,7 +496,7 @@ app.get("/api/users", apiMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/users/cursor - Stream users using MongoDB cursor (efficient for large datasets)
+// GET /api/users/cursor - Stream users using Mongoose cursor with public profiles
 app.get("/api/users/cursor", apiMiddleware, async (req, res) => {
   try {
     res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
@@ -496,7 +505,7 @@ app.get("/api/users/cursor", apiMiddleware, async (req, res) => {
     res.write("[");
     for await (const user of cursor) {
       if (!first) res.write(",");
-      res.write(JSON.stringify(user));
+      res.write(JSON.stringify(user.getPublicProfile()));
       first = false;
     }
     res.write("]");
@@ -715,17 +724,11 @@ app.delete("/api/users", apiMiddleware, async (req, res) => {
 });
 
 // CREATE Operations
-// POST /api/articles - Create single article (insertOne)
+// POST /api/articles - Create single article
 app.post("/api/articles", apiMiddleware, async (req, res) => {
   try {
-    const { title, content, author, tags, published } = req.body;
-
-    if (!title || !content || !author) {
-      return res.status(400).json({
-        success: false,
-        error: "Missing required fields: title, content, author",
-      });
-    }
+    const { title, content, author, tags, published, category, featured } =
+      req.body;
 
     const newArticle = new Article({
       title,
@@ -733,6 +736,8 @@ app.post("/api/articles", apiMiddleware, async (req, res) => {
       author,
       tags: tags || [],
       published: published !== undefined ? published : true,
+      category: category || "General",
+      featured: featured || false,
     });
 
     const savedArticle = await newArticle.save();
@@ -740,10 +745,24 @@ app.post("/api/articles", apiMiddleware, async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Article created successfully",
-      data: savedArticle,
+      data: savedArticle.getPublicData(),
     });
   } catch (error) {
     console.error("Error creating article:", error);
+
+    if (error.name === "ValidationError") {
+      const validationErrors = {};
+      Object.keys(error.errors).forEach((key) => {
+        validationErrors[key] = error.errors[key].message;
+      });
+
+      return res.status(400).json({
+        success: false,
+        error: "Validation failed",
+        details: validationErrors,
+      });
+    }
+
     res.status(500).json({
       success: false,
       error: "Failed to create article",
@@ -752,7 +771,7 @@ app.post("/api/articles", apiMiddleware, async (req, res) => {
   }
 });
 
-// POST /api/articles/many - Create multiple articles (insertMany)
+// POST /api/articles/many - Create multiple articles
 app.post("/api/articles/many", apiMiddleware, async (req, res) => {
   try {
     const { articles } = req.body;
@@ -766,15 +785,31 @@ app.post("/api/articles/many", apiMiddleware, async (req, res) => {
 
     const savedArticles = await Article.insertMany(articles, {
       ordered: false,
+      runValidators: true,
     });
 
     res.status(201).json({
       success: true,
       message: `${savedArticles.length} articles created successfully`,
-      data: savedArticles,
+      data: savedArticles.map((article) => article.getPublicData()),
     });
   } catch (error) {
     console.error("Error creating multiple articles:", error);
+
+    if (error.writeErrors) {
+      const validationErrors = error.writeErrors.map((err) => ({
+        index: err.index,
+        error: err.errmsg,
+      }));
+
+      return res.status(400).json({
+        success: false,
+        error: "Some articles failed validation",
+        details: validationErrors,
+        insertedCount: error.result?.insertedCount || 0,
+      });
+    }
+
     res.status(500).json({
       success: false,
       error: "Failed to create articles",
@@ -829,7 +864,7 @@ app.get("/api/articles", apiMiddleware, async (req, res) => {
       success: true,
       count: articles.length,
       total: total,
-      data: articles,
+      data: articles.map((article) => article.getPublicData()),
     });
   } catch (error) {
     console.error("Error fetching articles:", error);
@@ -893,12 +928,11 @@ app.get("/api/articles/:id", apiMiddleware, async (req, res) => {
     }
 
     // Increment view count
-    article.views = (article.views || 0) + 1;
-    await article.save();
+    await article.incrementViews();
 
     res.json({
       success: true,
-      data: article,
+      data: article.getPublicData(),
     });
   } catch (error) {
     console.error("Error fetching article:", error);
